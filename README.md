@@ -1,2 +1,2 @@
 # UDBG_SNPs_rnd2
-test
+This project directory stores the analyses done on Jim Brosnan's UDBG data.
