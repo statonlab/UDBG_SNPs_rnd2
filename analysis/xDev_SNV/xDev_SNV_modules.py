@@ -41,6 +41,44 @@ def smartOpen(filename=None):
         if fh is not sys.stdout:
             fh.close()
 
+# module:      convert2n
+# input:       filename
+# return:      . 
+# description: This module is used to convert triplid + tetraploid to diploid and print out results
+# to do:       .
+def convert2n(file):
+    import re
+    import collections
+    f = open(file, 'r')
+    # process lines in file
+    for line in f:
+        if line.startswith("##"):
+            x = None
+            print line.rstrip()
+        elif line.startswith("#"):
+            header = line.split()
+            print line.rstrip()
+            # get set
+            tmp = []
+        else:
+            data = line.split()
+            out = '\t'.join(data[0:9])
+            for i,l in zip(header[9:],data[9:]):
+                # each data section needs to be split to show the inviduals genotype
+                GT   = l.split(':')
+                Al   = GT[0].split('/')
+                # create a list of the set of the list GT and reverse it using [::-1]
+                Alu  = list(set(Al))[::-1]
+                if len(Alu) == 1 and Al[0] != ".":
+                    comb = Alu[0] + "/" + Alu[0] + ":" + ":".join(GT[1:])
+                elif len(Alu) == 2:
+                    comb = Alu[0] + "/" + Alu[1] + ":" + ":".join(GT[1:])
+                elif len(Alu) > 2 or Al[0] == ".":
+                    comb = "."
+                out = out + "\t" + comb
+            print out
+    f.close()
+
 # module:      readVCF
 # input:       filename
 # return:      dictionary of dictionary, list, dictionary
@@ -99,13 +137,105 @@ def readVCF(file):
     # return as a dictionary inlucding... a dictionary, a list, and a location dictionary
     return {'dict':dict, 'pos':pos, 'loc':loc}
 
-# module:      collapseCultivars
+# module:      filterVCF
+# input:       filename
+# return:      dictionary of dictionary, list, dictionary
+# description: This module is used to read and parse a vcf file into
+# a total of three objects: an ordered dictionary of positions, cultivars,
+# individuals, genotypes, and read depths, a list of genomic positions, and
+# a dictionary containing the header info the vcf file
+# to do:       Add extra support for parsing cultivar / species names. Currently
+# only supports names of Letter# format. Eg. DA1, DA2, DA3 belong to DA and DB1,
+# DB2, DB3 belong to DB.
+def filterVCF(file, depth):
+    import re
+    import collections
+    # initialize dictionary for storing file
+    # dictionary will have two be able to reference position
+    # as well as individual (which has to components species / id#)
+    dict = {}
+    # initialize array to store possible reference position
+    pos = []
+    # initialize list to store header info
+    loc = []
+    f = open(file, 'r')
+    # process lines in file
+    for line in f:
+        if line.startswith("##"):
+            x = None
+        elif line.startswith("#"):
+            header = line.split()
+            # get set
+            for i in header[9:]:
+                loc.append(i)
+        else:
+            data = line.split()
+            for i,l in zip(header[9:],data[9:]):
+                try:
+                    store = collections.namedtuple('GT','DP pct sig avgD')
+                    GTDP = l.split(':')
+                    store.sig = "*"
+                    store.GT = GTDP[0]
+                    store.DP = GTDP[1]
+                    store.pct = "100%"
+                    store.avgD = GTDP[1]
+                    dict[(data[1]),i] = store
+                    pos.append(data[1])
+                except:
+                    # if our sample entry doesn't have a genotype call set DP and GT to '.'
+                    store = collections.namedtuple('GT','DP pct sig avgD')
+                    store.sig = ""
+                    store.GT = "."
+                    store.DP = "."
+                    store.pct = ""
+                    store.avgD = "."
+                    dict[(data[1]),i] = store
+                    pos.append(data[1])
+                    # we'll just ignore empty pos for now...
+    f.close()
+    # let's keep only unique values from pos by using set
+    pos = list(set(pos))
+    # return as a dictionary inlucding... a dictionary, a list, and a location list
+    return {'n_dict':dict, 'positions':pos, 'cultivars':loc}
+
+# module:      locWithCall
+# input:       dictionary
+# return:      dictionary
+# description: .
+# to do:       .
+def locWithCall(i_dict,file=None):
+    import collections
+    with smartOpen(file) as fh:
+        counter_dict = {}
+        read_dict = {}
+        for i in i_dict['pos']:
+            print i
+            for key, value in i_dict['loc'].iteritems():
+                for l in range(1, value+1):
+                    GT, DP = i_dict['dict'][(i,key,str(l))]
+                    store = collections.namedtuple('total','DP')
+                    if GT != '.':
+                        if (key,l) in counter_dict:
+                            counter_dict[(key,l)].total += 1
+                            counter_dict[(key,l)].DP += int(DP)
+                        else:
+                            counter_dict[(key,l)] = store
+                            counter_dict[(key,l)].total = 1
+                            counter_dict[(key,l)].DP = int(DP)
+        print >>fh, "GT,Loc w/ call,Depth"
+        counter_od = collections.OrderedDict(sorted(counter_dict.items()))
+        for i,l in counter_od:
+            out = str(i)+str(l)+","+str(counter_od[(i,l)].total)+","+str(counter_od[(i,l)].DP)
+#            print >>fh, str(i)+str(l)+","+str(counter_od[(i,l)].total)+","+str(counter_od[(i,l)].DP)
+            print >>fh, out
+
+# module:      filter
 # input:       dictionary and depth cutoff for acceptable call
 # return:      dictionary
 # description: this module takes a dictionary of a vcf file and attempts to collapse multiple cultivar
 # SNV calls into a single call. 
 # to do:       make significance level more variable
-def collapseCultivars(i_dict, depth, allow60 = "no"):
+def filter(i_dict, depth, allow60 = False):
     import re
     import collections
     # intialize our return dictionary
@@ -157,7 +287,7 @@ def collapseCultivars(i_dict, depth, allow60 = "no"):
                     store.pct = format(float(counter.most_common(1)[0][1])/float(len(full)), '.2f')
                     store.avgD = format(float(sum(avgD))/float(len(avgD)), '.2f')
                 # if 60% of individuals of this cultivar have the same genotype... we use *** (requires flag allow60 be set to "yes")
-                elif float(counter.most_common(1)[0][1])/float(len(full)) >= 0.60 and allow60 == "yes":
+                elif float(counter.most_common(1)[0][1])/float(len(full)) >= 0.60 and allow60 == True:
                     store.sig = "***"
                     store.GT = counter.most_common(1)[0][0]
                     store.DP = format(counter.most_common(1)[0][1], '.2f')

@@ -6,7 +6,7 @@ import xDev_SNV_modules
 
 def main():
     # let's throw an error and exit if they are using a version of python other than 2.7.3
-    #if sys.version_info!=(2,7,3):
+    #if sys.version_info!=(2.7.3):
     #    raise SystemExit('Sorry, please load python/2.7.3 module')
     # command line parsing
     try:
@@ -38,21 +38,19 @@ def main():
     # loc : dict of key/value pairs for species and # of ids
     # od  : ordered dictionary of all results using tuple of pos, species, id# as key
     print "Reading VCF file..."
-    dict = xDev_SNV_modules.readVCF(file)
-    print "Collapsing cultivars..."
-    results = xDev_SNV_modules.filter(dict, 20, True)
+    dict = xDev_SNV_modules.filterVCF(file, 2)
     print "Determining informative sites..."
-    informative = xDev_SNV_modules.findInformativePositions(results)
-    
+    informative = xDev_SNV_modules.findInformativePositions(dict)
+
     # print results
-    print "Saving results to: "+output
+    #print "Saving results to: "+output
     if output:
         xDev_SNV_modules.printMatrix(informative,"clean",output+"_informative.clean.tsv")
         xDev_SNV_modules.printMatrix(informative,"sig",output+"_informative.sig.tsv")
         xDev_SNV_modules.printMatrix(informative,"full",output+"_informative.full.tsv")
-        xDev_SNV_modules.printMatrix(results,"clean",output+"_full.clean.tsv")
-        xDev_SNV_modules.printMatrix(results,"sig",output+"_full.sig.tsv")
-        xDev_SNV_modules.printMatrix(results,"full",output+"_full.full.tsv")
+#        xDev_SNV_modules.printMatrix(results,"clean",output+"_full.clean.tsv")
+#        xDev_SNV_modules.printMatrix(results,"sig",output+"_full.sig.tsv")
+#        xDev_SNV_modules.printMatrix(results,"full",output+"_full.full.tsv")
 
     #xDev_SNV_modules.printMatrix(results,"clean")
     #for i in informative['n_dict'].iteritems():
