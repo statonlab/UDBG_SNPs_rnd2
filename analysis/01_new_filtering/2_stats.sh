@@ -1,3 +1,3 @@
 #!/bin/bash
-#/lustre/projects/staton/software/bcftools-1.2/bcftools stats all.filtered.recode.vcf > all.filtered.recode.vchk
+# create plots of the vcfstats file
 /lustre/projects/staton/software/bcftools-1.2/plot-vcfstats -p plot all.filtered.recode.vchk
