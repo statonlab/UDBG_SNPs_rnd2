@@ -1,3 +1,4 @@
+trim and rename separated fastq files..
 ####create links to important fastq data and remove the blank
 ```
 ln -s ../../raw_data/*.fastq ./
