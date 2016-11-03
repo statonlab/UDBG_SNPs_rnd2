@@ -1,3 +1,4 @@
+An attempt to rerun the Cornell pipeline.
 ####create links to important files
 ```
 ln -s ../../raw_data/HWTWGBGXX_1.fastq ./
